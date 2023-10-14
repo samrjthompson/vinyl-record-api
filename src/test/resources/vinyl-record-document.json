@@ -1,0 +1,14 @@
+{
+  "_id": "<id>",
+  "artist": "<artistName>",
+  "album": "<albumName>",
+  "year": "<year>",
+  "created": {
+    "at": "<at>",
+    "by": "<by>"
+  },
+  "updated": {
+    "at": "<at>",
+    "by": "<by>"
+  }
+}
