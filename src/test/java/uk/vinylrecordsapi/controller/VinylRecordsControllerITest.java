@@ -20,6 +20,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.vinylrecordsapi.Main;
 import uk.vinylrecordsapi.model.document.VinylRecordDocument;
+import uk.vinylrecordsapi.model.request.VinylRecordRequest;
 import uk.vinylrecordsapi.model.response.VinylRecordResponse;
 
 import java.nio.file.Files;
@@ -31,6 +32,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 @Testcontainers
 @AutoConfigureMockMvc
@@ -39,6 +41,7 @@ class VinylRecordsControllerITest {
 
     private static final String VINYL_RECORD_COLLECTION = "records";
     private static final String GET_ALL_RECORDS_ENDPOINT = "/vinyl_records";
+    private static final String POST_RECORD_ENDPOINT = "/vinyl_records";
 
     @Autowired
     private MockMvc mockMvc;
@@ -105,4 +108,30 @@ class VinylRecordsControllerITest {
         assertEquals("The Rolling Stones", actual.get(1).getArtist());
         assertEquals("Let It Bleed", actual.get(1).getAlbum());
     }
+
+    @Test
+    void successfullyPostAllVinylRecord() throws Exception {
+        // given
+        VinylRecordRequest request =
+                new VinylRecordRequest()
+                        .setArtist("The Beatles")
+                        .setAlbum("Revolver")
+                        .setYear("1966");
+
+        // when
+        ResultActions result =
+                mockMvc.perform(post(POST_RECORD_ENDPOINT)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)));
+
+        // then
+        result.andExpect(MockMvcResultMatchers.status().isOk());
+        List<VinylRecordDocument> documents = mongoTemplate.findAll(VinylRecordDocument.class);
+        assertEquals(1, documents.size());
+        assertEquals("The Beatles", documents.get(0).getArtist());
+        assertEquals("Revolver", documents.get(0).getAlbum());
+        assertEquals("1966", documents.get(0).getYear());
+    }
+
+    // TODO: Add test to test bad request when null/empty request field
 }

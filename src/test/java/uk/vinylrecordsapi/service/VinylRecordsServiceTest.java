@@ -9,8 +9,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import uk.vinylrecordsapi.exception.ServiceUnavailableException;
+import uk.vinylrecordsapi.mapper.VinylRecordRequestMapper;
 import uk.vinylrecordsapi.mapper.VinylRecordsResponseMapper;
 import uk.vinylrecordsapi.model.document.VinylRecordDocument;
+import uk.vinylrecordsapi.model.request.VinylRecordRequest;
 import uk.vinylrecordsapi.model.response.VinylRecordResponse;
 
 import java.util.ArrayList;
@@ -30,6 +32,8 @@ class VinylRecordsServiceTest {
 
     @Mock
     private VinylRecordsResponseMapper vinylRecordsResponseMapper;
+    @Mock
+    private VinylRecordRequestMapper vinylRecordRequestMapper;
     @Mock
     private MongoTemplate mongoTemplate;
 
@@ -101,5 +105,40 @@ class VinylRecordsServiceTest {
         assertThrows(ServiceUnavailableException.class, executable);
         verify(mongoTemplate).findAll(VinylRecordDocument.class);
         verifyNoInteractions(vinylRecordsResponseMapper);
+    }
+
+    @Test
+    void successfullyInsertNewVinylRecordDocument() {
+        // given
+        VinylRecordRequest request =
+                new VinylRecordRequest()
+                        .setArtist("The Beatles")
+                        .setAlbum("Revolver")
+                        .setYear("1966");
+
+        // when
+        service.insertNewVinylRecord(request);
+
+        // then
+        verify(mongoTemplate).save(vinylRecordRequestMapper.map(request));
+    }
+
+    @Test
+    void insertNewVinylRecordDocumentThrowsServiceUnavailableException() {
+        // given
+        VinylRecordRequest request =
+                new VinylRecordRequest()
+                        .setArtist("The Beatles")
+                        .setAlbum("Revolver")
+                        .setYear("1966");
+
+        doThrow(new DataAccessException("..."){})
+                .when(mongoTemplate).save(any());
+
+        // when
+        Executable executable = () -> service.insertNewVinylRecord(request);
+
+        // then
+        assertThrows(ServiceUnavailableException.class, executable);
     }
 }
