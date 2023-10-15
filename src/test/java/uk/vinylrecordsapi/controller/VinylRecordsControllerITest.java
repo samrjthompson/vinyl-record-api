@@ -110,7 +110,7 @@ class VinylRecordsControllerITest {
     }
 
     @Test
-    void successfullyPostAllVinylRecord() throws Exception {
+    void successfullyInsertVinylRecord() throws Exception {
         // given
         VinylRecordRequest request =
                 new VinylRecordRequest()
@@ -133,5 +133,24 @@ class VinylRecordsControllerITest {
         assertEquals("1966", documents.get(0).getYear());
     }
 
-    // TODO: Add test to test bad request when null/empty request field
+    @Test
+    void insertVinylRecordThrowsBadRequest() throws Exception {
+        // given
+        VinylRecordRequest request =
+                new VinylRecordRequest()
+                        .setArtist("")
+                        .setAlbum("Revolver")
+                        .setYear("1966");
+
+        // when
+        ResultActions result =
+                mockMvc.perform(post(POST_RECORD_ENDPOINT)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)));
+
+        // then
+        result.andExpect(MockMvcResultMatchers.status().isBadRequest());
+        List<VinylRecordDocument> documents = mongoTemplate.findAll(VinylRecordDocument.class);
+        assertEquals(0, documents.size());
+    }
 }
