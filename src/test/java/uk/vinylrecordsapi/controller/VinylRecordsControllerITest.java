@@ -35,6 +35,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 @Testcontainers
@@ -46,6 +47,8 @@ class VinylRecordsControllerITest {
     private static final String GET_ALL_RECORDS_ENDPOINT = "/vinyl_records";
     private static final String POST_RECORD_ENDPOINT = "/vinyl_records";
     private static final String DELETE_RECORD_ENDPOINT = "/vinyl_records/{record_id}";
+    private static final String UPDATE_RECORD_ENDPOINT = "/vinyl_records/{record_id}";
+    private static final String VINYL_RECORD_DOCUMENT_TEMPLATE_JSON_PATH = "src/test/resources/vinyl-record-document.json";
 
     @Autowired
     private MockMvc mockMvc;
@@ -84,7 +87,7 @@ class VinylRecordsControllerITest {
                                 .setArtist("The Rolling Stones")
                                 .setAlbum("Let It Bleed"));
 
-        String rawJson = new String(Files.readAllBytes(Path.of("src/test/resources/vinyl-record-document.json")));
+        String rawJson = new String(Files.readAllBytes(Path.of(VINYL_RECORD_DOCUMENT_TEMPLATE_JSON_PATH)));
         List<Document> documentsToAdd = new ArrayList<>();
         for (VinylRecordDocument record : documents) {
             documentsToAdd.add(Document.parse(
@@ -166,7 +169,7 @@ class VinylRecordsControllerITest {
         final String album = "Revolver";
         final String year = "1966";
 
-        String rawJson = new String(Files.readAllBytes(Path.of("src/test/resources/vinyl-record-document.json")));
+        String rawJson = new String(Files.readAllBytes(Path.of(VINYL_RECORD_DOCUMENT_TEMPLATE_JSON_PATH)));
         Document document = Document.parse(
                 rawJson.replaceAll("<id>", recordId)
                         .replaceAll("<artistName>", artist)
@@ -207,5 +210,71 @@ class VinylRecordsControllerITest {
 
         // then
         result.andExpect(MockMvcResultMatchers.status().isConflict());
+    }
+
+    @Test
+    void successfullyUpdateVinylRecord() throws Exception {
+        // given
+        final String recordId = "12345";
+
+        VinylRecordDocument staleDocument =
+                new VinylRecordDocument()
+                        .setId(recordId)
+                        .setArtist("Beatles")
+                        .setAlbum("Revolver")
+                        .setYear("1986");
+
+        VinylRecordRequest updatedRequest =
+                new VinylRecordRequest()
+                        .setArtist("The Beatles")
+                        .setYear("1966");
+
+        mongoTemplate.insert(staleDocument, VINYL_RECORD_COLLECTION);
+        List<VinylRecordDocument> documents = mongoTemplate.findAll(VinylRecordDocument.class);
+        assertEquals(1, documents.size());
+        assertEquals(recordId, documents.get(0).getId());
+        assertEquals("Beatles", documents.get(0).getArtist());
+        assertEquals("Revolver", documents.get(0).getAlbum());
+        assertEquals("1986", documents.get(0).getYear());
+
+        // when
+        ResultActions result =
+                mockMvc.perform(patch(UPDATE_RECORD_ENDPOINT, recordId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updatedRequest)));
+
+        // then
+        result.andExpect(MockMvcResultMatchers.status().isOk());
+        documents = mongoTemplate.findAll(VinylRecordDocument.class);
+        assertEquals(1, documents.size());
+        assertEquals("The Beatles", documents.get(0).getArtist());
+        assertEquals("Revolver", documents.get(0).getAlbum());
+        assertEquals("1966", documents.get(0).getYear());
+    }
+
+    @Test
+    void updateVinylRecordThrowsNotFoundException() throws Exception {
+        // given
+        final String recordId = "12345";
+
+        VinylRecordRequest updatedRequest =
+                new VinylRecordRequest()
+                        .setArtist("The Beatles")
+                        .setAlbum(null)
+                        .setYear("1966");
+
+        List<VinylRecordDocument> documents = mongoTemplate.findAll(VinylRecordDocument.class);
+        assertEquals(0, documents.size());
+
+        // when
+        ResultActions result =
+                mockMvc.perform(patch(UPDATE_RECORD_ENDPOINT, recordId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updatedRequest)));
+
+        // then
+        result.andExpect(MockMvcResultMatchers.status().isNotFound());
+        documents = mongoTemplate.findAll(VinylRecordDocument.class);
+        assertEquals(0, documents.size());
     }
 }

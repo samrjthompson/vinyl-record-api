@@ -4,11 +4,11 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class VinylRecordRequest {
 
-    @JsonProperty(required = true)
+    @JsonProperty()
     private String artist;
-    @JsonProperty(required = true)
+    @JsonProperty()
     private String album;
-    @JsonProperty(required = true)
+    @JsonProperty()
     private String year;
 
     public String getArtist() {
