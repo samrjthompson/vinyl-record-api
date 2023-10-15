@@ -3,8 +3,11 @@ package uk.vinylrecordsapi.service;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 import uk.vinylrecordsapi.exception.BadRequestException;
+import uk.vinylrecordsapi.exception.ConflictException;
 import uk.vinylrecordsapi.exception.NotFoundException;
 import uk.vinylrecordsapi.exception.ServiceUnavailableException;
 import uk.vinylrecordsapi.mapper.VinylRecordRequestMapper;
@@ -57,5 +60,19 @@ public class VinylRecordsService {
         return StringUtils.isBlank(request.getArtist()) ||
                 StringUtils.isBlank(request.getAlbum()) ||
                 StringUtils.isBlank(request.getYear());
+    }
+
+    public void deleteVinylRecord(String recordId) {
+        Query query = new Query()
+                .addCriteria(Criteria.where("_id").is(recordId));
+        try {
+            Optional<VinylRecordDocument> document =
+                    Optional.ofNullable(mongoTemplate.findAndRemove(query, VinylRecordDocument.class));
+            if (document.isEmpty()) {
+                throw new ConflictException("Document was either not found or already deleted.");
+            }
+        } catch (DataAccessException ex) {
+            throw new ServiceUnavailableException("MongoDB was unavailable.");
+        }
     }
 }
