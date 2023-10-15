@@ -8,7 +8,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import uk.vinylrecordsapi.exception.BadRequestException;
+import uk.vinylrecordsapi.exception.ConflictException;
 import uk.vinylrecordsapi.exception.ServiceUnavailableException;
 import uk.vinylrecordsapi.mapper.VinylRecordRequestMapper;
 import uk.vinylrecordsapi.mapper.VinylRecordsResponseMapper;
@@ -19,8 +22,7 @@ import uk.vinylrecordsapi.model.response.VinylRecordResponse;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.doReturn;
@@ -30,6 +32,8 @@ import static org.mockito.Mockito.verifyNoInteractions;
 
 @ExtendWith(MockitoExtension.class)
 class VinylRecordsServiceTest {
+
+    private static final String RECORD_ID = "1234";
 
     @Mock
     private VinylRecordsResponseMapper vinylRecordsResponseMapper;
@@ -170,6 +174,49 @@ class VinylRecordsServiceTest {
 
         // when
         Executable executable = () -> service.insertNewVinylRecord(request);
+
+        // then
+        assertThrows(ServiceUnavailableException.class, executable);
+    }
+
+    @Test
+    void successfullyDeleteVinylRecord() {
+        // given
+        Query query = new Query()
+                .addCriteria(Criteria.where("_id").is(RECORD_ID));
+        VinylRecordDocument document = new VinylRecordDocument();
+        doReturn(document)
+                .when(mongoTemplate).findAndRemove(any(), any());
+
+        // when
+        Executable executable = () -> service.deleteVinylRecord(RECORD_ID);
+
+        // then
+        assertDoesNotThrow(executable);
+        verify(mongoTemplate).findAndRemove(query, VinylRecordDocument.class);
+    }
+
+    @Test
+    void deleteVinylRecordThrowsConflictException() {
+        // given
+        doReturn(null)
+                .when(mongoTemplate).findAndRemove(any(), any());
+
+        // when
+        Executable executable = () -> service.deleteVinylRecord(RECORD_ID);
+
+        // then
+        assertThrows(ConflictException.class, executable);
+    }
+
+    @Test
+    void deleteVinylRecordThrowsServiceUnavailableException() {
+        // given
+        doThrow(new DataAccessException("..."){})
+                .when(mongoTemplate).findAndRemove(any(), any());
+
+        // when
+        Executable executable = () -> service.deleteVinylRecord(RECORD_ID);
 
         // then
         assertThrows(ServiceUnavailableException.class, executable);

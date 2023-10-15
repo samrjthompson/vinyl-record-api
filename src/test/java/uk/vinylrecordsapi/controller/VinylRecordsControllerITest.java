@@ -11,6 +11,8 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.SimpleMongoClientDatabaseFactory;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -31,8 +33,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 
 @Testcontainers
 @AutoConfigureMockMvc
@@ -42,6 +43,7 @@ class VinylRecordsControllerITest {
     private static final String VINYL_RECORD_COLLECTION = "records";
     private static final String GET_ALL_RECORDS_ENDPOINT = "/vinyl_records";
     private static final String POST_RECORD_ENDPOINT = "/vinyl_records";
+    private static final String DELETE_RECORD_ENDPOINT = "/vinyl_records/{record_id}";
 
     @Autowired
     private MockMvc mockMvc;
@@ -152,5 +154,56 @@ class VinylRecordsControllerITest {
         result.andExpect(MockMvcResultMatchers.status().isBadRequest());
         List<VinylRecordDocument> documents = mongoTemplate.findAll(VinylRecordDocument.class);
         assertEquals(0, documents.size());
+    }
+
+    @Test
+    void successfullyDeleteRecordById() throws Exception {
+        // given
+        final String recordId = UUID.randomUUID().toString();
+        final String artist = "The Beatles";
+        final String album = "Revolver";
+        final String year = "1966";
+
+        String rawJson = new String(Files.readAllBytes(Path.of("src/test/resources/vinyl-record-document.json")));
+        Document document = Document.parse(
+                rawJson.replaceAll("<id>", recordId)
+                        .replaceAll("<artistName>", artist)
+                        .replaceAll("<albumName>", album)
+                        .replaceAll("<year>", year));
+
+        mongoTemplate.insert(document, VINYL_RECORD_COLLECTION);
+
+        Query query = new Query().addCriteria(Criteria.where("_id").is(recordId));
+        List<VinylRecordDocument> documents = mongoTemplate.find(query, VinylRecordDocument.class);
+        assertEquals(1, documents.size());
+
+        // when
+        ResultActions result =
+                mockMvc.perform(delete(DELETE_RECORD_ENDPOINT, recordId)
+                        .contentType(MediaType.APPLICATION_JSON));
+
+        // then
+        result.andExpect(MockMvcResultMatchers.status().isOk());
+
+        documents = mongoTemplate.find(query, VinylRecordDocument.class);
+        assertTrue(documents.isEmpty());
+    }
+
+    @Test
+    void deleteRecordByIdThrowsConflictException() throws Exception {
+        // given
+        final String recordId = UUID.randomUUID().toString();
+
+        Query query = new Query().addCriteria(Criteria.where("_id").is(recordId));
+        List<VinylRecordDocument> documents = mongoTemplate.find(query, VinylRecordDocument.class);
+        assertEquals(0, documents.size());
+
+        // when
+        ResultActions result =
+                mockMvc.perform(delete(DELETE_RECORD_ENDPOINT, recordId)
+                        .contentType(MediaType.APPLICATION_JSON));
+
+        // then
+        result.andExpect(MockMvcResultMatchers.status().isConflict());
     }
 }
