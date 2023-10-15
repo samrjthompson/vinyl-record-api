@@ -1,5 +1,6 @@
 package uk.vinylrecordsapi.service;
 
+import com.mongodb.client.result.UpdateResult;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.function.Executable;
@@ -10,8 +11,10 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import uk.vinylrecordsapi.exception.BadRequestException;
 import uk.vinylrecordsapi.exception.ConflictException;
+import uk.vinylrecordsapi.exception.NotFoundException;
 import uk.vinylrecordsapi.exception.ServiceUnavailableException;
 import uk.vinylrecordsapi.mapper.VinylRecordRequestMapper;
 import uk.vinylrecordsapi.mapper.VinylRecordsResponseMapper;
@@ -222,5 +225,96 @@ class VinylRecordsServiceTest {
 
         // then
         assertThrows(ServiceUnavailableException.class, executable);
+    }
+
+    @Test
+    void successfullyUpdateVinylRecord() {
+        // given
+        Query query = new Query()
+                .addCriteria(Criteria.where("_id").is(RECORD_ID));
+
+        VinylRecordRequest request = new VinylRecordRequest();
+
+        Update update = new Update();
+        UpdateResult updateResult = UpdateResult.acknowledged(1, null, null);
+
+        doReturn(updateResult)
+                .when(mongoTemplate).updateFirst(any(), any(), any(Class.class));
+        doReturn(update)
+                .when(vinylRecordRequestMapper).mapUpdate(any());
+
+        // when
+        Executable executable = () -> service.updateVinylRecord(request, RECORD_ID);
+
+        // then
+        assertDoesNotThrow(executable);
+        verify(mongoTemplate).updateFirst(query, update, VinylRecordDocument.class);
+    }
+
+    @Test
+    void successfullyUpdateVinylRecordWithNullField() {
+        // given
+        Query query = new Query()
+                .addCriteria(Criteria.where("_id").is(RECORD_ID));
+
+        VinylRecordRequest request =
+                new VinylRecordRequest()
+                        .setArtist(null)
+                        .setAlbum("")
+                        .setYear("1966");
+
+        Update update = new Update();
+        UpdateResult updateResult = UpdateResult.acknowledged(1, null, null);
+
+        doReturn(updateResult)
+                .when(mongoTemplate).updateFirst(any(), any(), any(Class.class));
+        doReturn(update)
+                .when(vinylRecordRequestMapper).mapUpdate(any());
+
+        // when
+        Executable executable = () -> service.updateVinylRecord(request, RECORD_ID);
+
+        // then
+        assertDoesNotThrow(executable);
+        verify(mongoTemplate).updateFirst(query, update, VinylRecordDocument.class);
+    }
+
+    @Test
+    void updateVinylRecordThrowsServiceUnavailableException() {
+        // given
+        VinylRecordRequest request = new VinylRecordRequest();
+
+        doThrow(new DataAccessException("..."){})
+                .when(mongoTemplate).updateFirst(any(), any(), any(Class.class));
+
+        // when
+        Executable executable = () -> service.updateVinylRecord(request, RECORD_ID);
+
+        // then
+        assertThrows(ServiceUnavailableException.class, executable);
+    }
+
+    @Test
+    void updateVinylRecordThrowsNotFoundException() {
+        // given
+        Query query = new Query()
+                .addCriteria(Criteria.where("_id").is(RECORD_ID));
+
+        VinylRecordRequest request = new VinylRecordRequest();
+
+        Update update = new Update();
+        UpdateResult updateResult = UpdateResult.acknowledged(0, null, null);
+
+        doReturn(updateResult)
+                .when(mongoTemplate).updateFirst(any(), any(), any(Class.class));
+        doReturn(update)
+                .when(vinylRecordRequestMapper).mapUpdate(any());
+
+        // when
+        Executable executable = () -> service.updateVinylRecord(request, RECORD_ID);
+
+        // then
+        assertThrows(NotFoundException.class, executable);
+        verify(mongoTemplate).updateFirst(query, update, VinylRecordDocument.class);
     }
 }

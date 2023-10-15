@@ -1,5 +1,6 @@
 package uk.vinylrecordsapi.service;
 
+import com.mongodb.client.result.UpdateResult;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -73,6 +74,20 @@ public class VinylRecordsService {
             }
         } catch (DataAccessException ex) {
             throw new ServiceUnavailableException("MongoDB was unavailable.");
+        }
+    }
+
+    public void updateVinylRecord(VinylRecordRequest request, String recordId) {
+        Query query = new Query()
+                .addCriteria(Criteria.where("_id").is(recordId));
+        UpdateResult updateResult;
+        try {
+            updateResult = mongoTemplate.updateFirst(query, vinylRecordRequestMapper.mapUpdate(request), VinylRecordDocument.class);
+        } catch (DataAccessException ex) {
+            throw new ServiceUnavailableException("MongoDB is unavailable.");
+        }
+        if (updateResult.getMatchedCount() == 0) {
+            throw new NotFoundException(String.format("Record could not be found with the id: [%s]", recordId));
         }
     }
 }

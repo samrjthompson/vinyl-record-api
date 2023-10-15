@@ -5,6 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -42,6 +43,15 @@ public class VinylRecordsController {
     public ResponseEntity<Void> deleteVinylRecord(
             @PathVariable("record_id") String recordId) {
         service.deleteVinylRecord(recordId);
+        return ResponseEntity.status(HttpStatus.OK).build();
+    }
+
+    // TODO: Refactor insert/update to become a PUT upsert combined
+    @PatchMapping("/vinyl_records/{record_id}")
+    public ResponseEntity<Void> updateVinylRecord(
+            @PathVariable("record_id") String recordId,
+            @RequestBody VinylRecordRequest request) {
+        service.updateVinylRecord(request, recordId);
         return ResponseEntity.status(HttpStatus.OK).build();
     }
 }
