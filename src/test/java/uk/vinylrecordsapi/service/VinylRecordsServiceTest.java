@@ -8,6 +8,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import uk.vinylrecordsapi.exception.BadRequestException;
 import uk.vinylrecordsapi.exception.ServiceUnavailableException;
 import uk.vinylrecordsapi.mapper.VinylRecordRequestMapper;
 import uk.vinylrecordsapi.mapper.VinylRecordsResponseMapper;
@@ -121,6 +122,38 @@ class VinylRecordsServiceTest {
 
         // then
         verify(mongoTemplate).save(vinylRecordRequestMapper.map(request));
+    }
+
+    @Test
+    void insertNewVinylRecordDocumentThrowsBadRequestExceptionWithEmptyField() {
+        // given
+        VinylRecordRequest request =
+                new VinylRecordRequest()
+                        .setArtist("")
+                        .setAlbum("Revolver")
+                        .setYear("1966");
+
+        // when
+        Executable executable = () -> service.insertNewVinylRecord(request);
+
+        // then
+        assertThrows(BadRequestException.class, executable);
+    }
+
+    @Test
+    void insertNewVinylRecordDocumentThrowsBadRequestExceptionWithNullField() {
+        // given
+        VinylRecordRequest request =
+                new VinylRecordRequest()
+                        .setArtist(null)
+                        .setAlbum("Revolver")
+                        .setYear("1966");
+
+        // when
+        Executable executable = () -> service.insertNewVinylRecord(request);
+
+        // then
+        assertThrows(BadRequestException.class, executable);
     }
 
     @Test

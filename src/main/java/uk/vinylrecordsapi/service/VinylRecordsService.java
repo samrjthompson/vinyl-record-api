@@ -1,8 +1,10 @@
 package uk.vinylrecordsapi.service;
 
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Service;
+import uk.vinylrecordsapi.exception.BadRequestException;
 import uk.vinylrecordsapi.exception.NotFoundException;
 import uk.vinylrecordsapi.exception.ServiceUnavailableException;
 import uk.vinylrecordsapi.mapper.VinylRecordRequestMapper;
@@ -40,10 +42,20 @@ public class VinylRecordsService {
     }
 
     public void insertNewVinylRecord(VinylRecordRequest request) {
+        if (checkForBadRequest(request)) {
+            throw new BadRequestException("Request had an empty or null field.");
+        }
+
         try {
             mongoTemplate.save(vinylRecordRequestMapper.map(request));
         } catch (DataAccessException ex) {
             throw new ServiceUnavailableException("MongoDB unavailable.");
         }
+    }
+
+    protected boolean checkForBadRequest(VinylRecordRequest request) {
+        return StringUtils.isBlank(request.getArtist()) ||
+                StringUtils.isBlank(request.getAlbum()) ||
+                StringUtils.isBlank(request.getYear());
     }
 }
