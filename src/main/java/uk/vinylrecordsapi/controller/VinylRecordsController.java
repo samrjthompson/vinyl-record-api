@@ -46,7 +46,6 @@ public class VinylRecordsController {
         return ResponseEntity.status(HttpStatus.OK).build();
     }
 
-    // TODO: Refactor insert/update to become a PUT upsert combined
     @PatchMapping("/vinyl_records/{record_id}")
     public ResponseEntity<Void> updateVinylRecord(
             @PathVariable("record_id") String recordId,

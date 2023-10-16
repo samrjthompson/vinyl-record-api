@@ -3,6 +3,7 @@ package uk.vinylrecordsapi.mapper;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Component;
+import uk.vinylrecordsapi.exception.BadRequestException;
 import uk.vinylrecordsapi.model.Created;
 import uk.vinylrecordsapi.model.Updated;
 import uk.vinylrecordsapi.model.document.VinylRecordDocument;
@@ -26,16 +27,20 @@ public class VinylRecordRequestMapper {
         boolean requestIsEmpty = true;
         Update update = new Update();
 
-        if (!StringUtils.isBlank(request.getArtist())) {
-            update.set("artist", request.getArtist());
+        final String artist = request.getArtist();
+        final String album = request.getAlbum();
+        final String year = request.getYear();
+
+        if (!StringUtils.isBlank(artist)) {
+            update.set("artist", artist);
             requestIsEmpty = false;
         }
-        if (!StringUtils.isBlank(request.getAlbum())) {
-            update.set("album", request.getAlbum());
+        if (!StringUtils.isBlank(album)) {
+            update.set("album", album);
             requestIsEmpty = false;
         }
-        if(!StringUtils.isBlank(request.getYear())) {
-            update.set("year", request.getYear());
+        if(!StringUtils.isBlank(year)) {
+            update.set("year", year);
             requestIsEmpty = false;
         }
 
@@ -44,8 +49,9 @@ public class VinylRecordRequestMapper {
                     new Updated()
                             .setAt(Instant.now().toString())
                             .setBy("user"));
+        } else {
+            throw new BadRequestException("Request contained no populated fields.");
         }
-
         return update;
     }
 }
