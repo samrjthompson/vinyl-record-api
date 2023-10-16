@@ -50,17 +50,25 @@ public class VinylRecordsService {
             throw new BadRequestException("Request had an empty or null field.");
         }
 
+        final String artist = request.getArtist();
+        final String album = request.getAlbum();
+        final String year = request.getYear();
+
+        Query query = new Query().addCriteria(
+                Criteria.where("artist").is(artist).regex(artist, "i")
+                        .and("album").is(album).regex(album, "i")
+                        .and("year").is(year).regex(year, "i"));
+
+        Optional<VinylRecordDocument> document = Optional.ofNullable(mongoTemplate.findOne(query, VinylRecordDocument.class));
+        if (document.isPresent()) {
+            throw new ConflictException("A record with these details already exists in the database.");
+        }
+
         try {
             mongoTemplate.save(vinylRecordRequestMapper.map(request));
         } catch (DataAccessException ex) {
             throw new ServiceUnavailableException("MongoDB unavailable.");
         }
-    }
-
-    protected boolean checkForBadRequest(VinylRecordRequest request) {
-        return StringUtils.isBlank(request.getArtist()) ||
-                StringUtils.isBlank(request.getAlbum()) ||
-                StringUtils.isBlank(request.getYear());
     }
 
     public void deleteVinylRecord(String recordId) {
@@ -89,5 +97,11 @@ public class VinylRecordsService {
         if (updateResult.getMatchedCount() == 0) {
             throw new NotFoundException(String.format("Record could not be found with the id: [%s]", recordId));
         }
+    }
+
+    protected boolean checkForBadRequest(VinylRecordRequest request) {
+        return StringUtils.isBlank(request.getArtist()) ||
+                StringUtils.isBlank(request.getAlbum()) ||
+                StringUtils.isBlank(request.getYear());
     }
 }

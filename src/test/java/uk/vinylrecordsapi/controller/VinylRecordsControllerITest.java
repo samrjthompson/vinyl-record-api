@@ -141,6 +141,49 @@ class VinylRecordsControllerITest {
     }
 
     @Test
+    void insertVinylRecordThrowsConflictException() throws Exception {
+        // given
+        final String recordId = UUID.randomUUID().toString();
+        final String artist = "The Beatles";
+        final String album = "Revolver";
+        final String year = "1966";
+
+        String rawJson = new String(Files.readAllBytes(Path.of(VINYL_RECORD_DOCUMENT_TEMPLATE_JSON_PATH)));
+        Document document = Document.parse(
+                rawJson.replaceAll("<id>", recordId)
+                        .replaceAll("<artistName>", artist)
+                        .replaceAll("<albumName>", album)
+                        .replaceAll("<year>", year));
+
+        mongoTemplate.insert(document, VINYL_RECORD_COLLECTION);
+        List<VinylRecordDocument> documents = mongoTemplate.findAll(VinylRecordDocument.class);
+        assertEquals(1, documents.size());
+        assertEquals("The Beatles", documents.get(0).getArtist());
+        assertEquals("Revolver", documents.get(0).getAlbum());
+        assertEquals("1966", documents.get(0).getYear());
+
+        VinylRecordRequest request =
+                new VinylRecordRequest()
+                        .setArtist("The beatles")
+                        .setAlbum("Revolver")
+                        .setYear("1966");
+
+        // when
+        ResultActions result =
+                mockMvc.perform(post(POST_RECORD_ENDPOINT)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)));
+
+        // then
+        result.andExpect(MockMvcResultMatchers.status().isConflict());
+        documents = mongoTemplate.findAll(VinylRecordDocument.class);
+        assertEquals(1, documents.size());
+        assertEquals("The Beatles", documents.get(0).getArtist());
+        assertEquals("Revolver", documents.get(0).getAlbum());
+        assertEquals("1966", documents.get(0).getYear());
+    }
+
+    @Test
     void insertVinylRecordThrowsBadRequest() throws Exception {
         // given
         VinylRecordRequest request =

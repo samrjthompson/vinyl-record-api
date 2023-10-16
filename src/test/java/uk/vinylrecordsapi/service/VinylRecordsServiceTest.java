@@ -34,6 +34,7 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @ExtendWith(MockitoExtension.class)
 class VinylRecordsServiceTest {
@@ -131,6 +132,32 @@ class VinylRecordsServiceTest {
 
         // then
         verify(mongoTemplate).save(vinylRecordRequestMapper.map(request));
+    }
+
+    @Test
+    void insertNewVinylRecordDocumentThrowsConflictException() {
+        // given
+        VinylRecordRequest request =
+                new VinylRecordRequest()
+                        .setArtist("The Beatles")
+                        .setAlbum("Revolver")
+                        .setYear("1966");
+
+        Query query = new Query().addCriteria(
+                Criteria.where("artist").is("The Beatles").regex("The Beatles", "i")
+                        .and("album").is("Revolver").regex("Revolver", "i")
+                        .and("year").is("1966").regex("1966", "i"));
+
+        doThrow(ConflictException.class)
+                .when(mongoTemplate).save(any());
+
+        // when
+        Executable executable = () -> service.insertNewVinylRecord(request);
+
+        // then
+        assertThrows(ConflictException.class, executable);
+        verify(mongoTemplate).findOne(query, VinylRecordDocument.class);
+        verifyNoMoreInteractions(mongoTemplate);
     }
 
     @Test
