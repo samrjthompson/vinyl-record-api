@@ -36,7 +36,7 @@ public class VinylRecordsController {
     public ResponseEntity<Void> insertNewVinylRecord(
             @RequestBody VinylRecordRequest request) {
         service.insertNewVinylRecord(request);
-        return ResponseEntity.status(HttpStatus.OK).build();
+        return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
     @DeleteMapping("/vinyl_records/{record_id}")
