@@ -132,7 +132,7 @@ class VinylRecordsControllerITest {
                         .content(objectMapper.writeValueAsString(request)));
 
         // then
-        result.andExpect(MockMvcResultMatchers.status().isOk());
+        result.andExpect(MockMvcResultMatchers.status().isCreated());
         List<VinylRecordDocument> documents = mongoTemplate.findAll(VinylRecordDocument.class);
         assertEquals(1, documents.size());
         assertEquals("The Beatles", documents.get(0).getArtist());
